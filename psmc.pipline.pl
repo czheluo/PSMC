@@ -3,7 +3,7 @@ use strict;
 use warnings;
 my $BEGIN_TIME=time();
 use Getopt::Long;
-my ($vcf,$out,$num,$order,$root,$maf,$mis,$dep,$gro,$step,$stop);
+my ($vcf,$out,$num,$maf,$mis,$dep,$gro,$step,$stop);
 use Data::Dumper;
 use FindBin qw($Bin $Script);
 use File::Basename qw(basename dirname);
@@ -12,9 +12,6 @@ GetOptions(
 	"help|?" =>\&USAGE,
 	"vcf:s"=>\$vcf,
 	"gro:s"=>\$gro,
-    "num:s"=>\$num,
-    "order:s"=>\$order,
-    "root:s"=>\$root,
 	"out:s"=>\$out,
 	"maf:s"=>\$maf,
 	"mis:s"=>\$mis,
@@ -23,6 +20,8 @@ GetOptions(
     "stop:s"=>\$stop,
 			) or &USAGE;
 &USAGE unless ($vcf and $order and $out and $gro and $num);
+
+
 mkdir $out if (!-d $out);
 mkdir "$out/work_sh" if (!-d "$out/work_sh");
 $out=ABSOLUTE_DIR($out);
@@ -53,10 +52,7 @@ if ($step ==2) {
 	print Log "run treemix \n",my $time=time(),"\n";
 	print Log "########################################\n";
 	my $tree=ABSOLUTE_DIR("$out/step01.vcf-filter/pop.tmix.gz");
-	my $job="perl $Bin/bin/step02.treemix.pl -tree $tree -num $num -out $out/step02.treemix -dsh $out/work_sh ";
-	if (defined $root){
-		$job .= " -root $root ";
-	}
+	my $job="perl $Bin/bin/vcf2psmc.pl -vcf $out/step01.vcf-filter/pop.recode.vcf  -out $out/step02.vcf2psmc -dsh $out/work_sh ";
 	print Log "$job\n";
 	`$job`;
 	print Log "$job\tdone!\n";
@@ -65,34 +61,7 @@ if ($step ==2) {
 	print Log "########################################\n";
     $step++ if ($step ne $stop);
 }
-if ($step ==3) {
-	print Log "########################################\n";
-	print Log "plot treemix \n",my $time=time(),"\n";
-	print Log "########################################\n";
-	my $list=ABSOLUTE_DIR("$out/step02.treemix/treemix.list");
-	my $job="perl $Bin/bin/step03.drawplot.pl -list $list -order $order -out $out/step03.drawplot -dsh $out/work_sh ";
-	print Log "$job\n";
-	`$job`;
-	print Log "$job\tdone!\n";
-	print Log "########################################\n";
-	print Log "plot treemix Done and elapsed time : ",time()-$time,"s\n";
-	print Log "########################################\n";
-	$step++ if ($step ne $stop);
-}
-if ($step ==4) {
-	print Log "########################################\n";
-	print Log "arrange result\n",my $time=time(),"\n";
-	print Log "########################################\n";
-	mkdir "$out/step04.result" if (!-d "$out/step04.result");
-	my $job="perl $Bin/bin/step04.result.pl -out $out";
-	print Log "$job\n";
-	`$job`;
-	print Log "$job\tdone!\n";
-	print Log "########################################\n";
-	print Log "arrange result Done and elapsed time : ",time()-$time,"s\n";
-	print Log "########################################\n";
-	$step++ if ($step ne $stop);
-}
+
 #######################################################################################
 print STDOUT "\nDone. Total elapsed time : ",time()-$BEGIN_TIME,"s\n";
 #######################################################################################
@@ -118,7 +87,7 @@ sub ABSOLUTE_DIR #$pavfile=&ABSOLUTE_DIR($pavfile);
 
 sub USAGE {#
         my $usage=<<"USAGE";
-Contact:        tong.wang\@majorbio.com;
+Contact:        meng.luo\@majorbio.com;
 Version:	$version;
 Script:		$Script
 Description:
