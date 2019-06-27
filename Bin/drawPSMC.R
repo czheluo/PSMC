@@ -6,19 +6,21 @@ spec = matrix(c(
 	'infile','i',0,'character',
 	'outdir','o',0,'character',
 	'year','y',0,'character',
+	'gro','g',0,'character',
 	'help','m',0,'logical'
 	), byrow=TRUE, ncol=4);
 opt = getopt(spec);
 print_usage <- function(spec=NULL){
 	cat(getopt(spec, usage=TRUE));
 	q(status=1);
+	cat("Rscript drawPSMC.R --infile pop.list --outdir ./ --gro id.list","\n")
 }
 if ( !is.null(opt$help)) { print_usage(spec) }
 if ( is.null(opt$infile)) { print_usage(spec)}
 if ( is.null(opt$outdir)){ print_usage(spec) }
 if(is.null(opt$year)){opt$year=1}
-setwd(opt$outdir);#mu=3.7e-8
-psmc.result<-function(file,i.iteration=25,mu=1.23e-9,s=100,g=as.numeric(opt$year))
+setwd(opt$outdir);#mu=1.23e-9
+psmc.result<-function(file,i.iteration=25,mu=3.7e-8,s=100,g=as.numeric(opt$year))
 {
 	X<-scan(file=file,what="",sep="\n",quiet=TRUE)
 
@@ -105,14 +107,22 @@ plotPsmc.allPops<-function(keywords, label, legend.names,
 	savePlot(filename=paste(label[1],save.as,sep="."),type=save.as)
 	dev.off()
 }
+library(RColorBrewer)
+
+color <- grDevices::colors()[grep('gr(a|e)y', grDevices::colors(), invert = T)]
+rcolor<-color[sample(1:length(color),length(color))]
 
 times<-Sys.time()
 ldfile<-read.table(opt$infile,head=TRUE)
 files=ldfile$file
 popid=ldfile$popid
-col<-rainbow(length(popid))
-pop.id<-popid
+col<-rcolor[1:length(popid)] #rainbow(length(popid))
+save.image("col.RData")
+pop.ids<-read.table(opt$gro,header=F)
+pop.id<-pop.ids$V1
 psmcdata<-data.frame()
+##royears=royears=8
+royears=4.5
 for (i in 1:length(popid)){
 	data<-psmc.result(file=as.character(files[i]))
 	print(data)
@@ -122,14 +132,14 @@ for (i in 1:length(popid)){
 	data<-na.omit(data)
 	print(c(ceiling(min(data$YearsAgo,na.rm=T)),round(max(data$YearsAgo,na.rm=T))))
 	pdf(paste(popid[i],"psmc.pdf",sep="."))
-	plot(1,1,ylim=c(0,round(max(data$Ne)/0.6)), xlim=c(ceiling(min(data$YearsAgo)),round(max(data$YearsAgo))),type="n",ylab="Ne(log 10)",xlab=paste("Generations ago(g=",opt$year,")",sep=""),xaxt="n")
+	plot(1,1,ylim=c(0,round(max(data$Ne)/1)), xlim=c(ceiling(min(data$YearsAgo)),royears),type="n",ylab="Ne(log 10)",xlab=expression(paste("Years ago(g=1",",",mu,"=3.7e-8)",sep="")),xaxt="n")
 	lines(x=data$YearsAgo,y=data$Ne,type="l",col=col[i],lwd=2)
-	axis(1,at=seq(ceiling(min(data$YearsAgo)),round(max(data$YearsAgo)),1),label=paste("10","^",seq(ceiling(min(data$YearsAgo)),round(max(data$YearsAgo)),1)))
+	axis(1,at=seq(ceiling(min(data$YearsAgo)),royears,1),label=paste("10","^",seq(ceiling(min(data$YearsAgo)),royears,1)))
 	dev.off()
 	png(paste(popid[i],"psmc.png",sep="."))
-	plot(1,1,ylim=c(0,round(max(data$Ne)/0.6)), xlim=c(ceiling(min(data$YearsAgo)),round(max(data$YearsAgo))),type="n",ylab="Ne(log 10)",xlab=paste("Generations ago(g=",opt$year,")",sep=""),xaxt="n")
+	plot(1,1,ylim=c(0,round(max(data$Ne)/1)), xlim=c(ceiling(min(data$YearsAgo)),royears),type="n",ylab="Ne(log 10)",xlab=expression(paste("Years ago(g=1",",",mu,"=3.7e-8)",sep="")),xaxt="n")
 	lines(x=data$YearsAgo,y=data$Ne,type="l",col=col[i],lwd=2)
-	axis(1,at=seq(ceiling(min(data$YearsAgo)),round(max(data$YearsAgo)),1),label=paste("10","^",seq(ceiling(min(data$YearsAgo)),round(max(data$YearsAgo)),1)))
+	axis(1,at=seq(ceiling(min(data$YearsAgo)),royears,1),label=paste("10","^",seq(ceiling(min(data$YearsAgo)),royears,1)))
 	dev.off()
 	psmcdata<-rbind(psmcdata,data.frame(year=data$YearsAgo,ne=data$Ne,popid=popid[i]))
 	data$YearsAgo=10^data$YearsAgo
@@ -137,20 +147,22 @@ for (i in 1:length(popid)){
 	write.table(file=paste(popid[i],"psmc.result",sep="."),data,row.names=F,sep="\t")
 }
 pdf(paste("pop-all","psmc.pdf",sep="."))
-print("haha");
-plot(1,1,ylim=c(0,round(max(psmcdata$ne)/0.6)), xlim=c(ceiling(min(psmcdata$year)),round(max(psmcdata$year))),type="n",ylab="Ne(log 10)",xlab=paste("Generations ago(g=",opt$year,")",sep=""),xaxt="n")
+#print(round(max(psmcdata$year)))
+## round(max(psmcdata$year))=8
+roundyears=4.5
+plot(1,1,ylim=c(0,round(max(psmcdata$ne)/1)), xlim=c(ceiling(min(psmcdata$year)),roundyears),type="n",ylab="Ne(log 10)",xlab=expression(paste("Years ago(g=1",",",mu,"=3.7e-8)",sep="")),xaxt="n")
 for (i in 1:length(popid)){
 	lines(y=psmcdata$ne[psmcdata$popid==popid[i]],x=psmcdata$year[psmcdata$popid==popid[i]],type="l",col=col[i],lwd=2)
 }
-axis(1,at=seq(ceiling(min(psmcdata$year)),round(max(psmcdata$year)),1),label=paste("10","^",seq(ceiling(min(psmcdata$year)),round(max(psmcdata$year)),1)))
+axis(1,at=seq(ceiling(min(psmcdata$year)),roundyears,1),label=paste("10","^",seq(ceiling(min(psmcdata$year)),roundyears,1)))
 legend("topright",col=col,legend=pop.id,pch=1,cex=1)
 dev.off()
-png(paste("pop-all","psmc.png",sep="."))
-plot(1,1,ylim=c(0,round(max(psmcdata$ne)/0.6)), xlim=c(ceiling(min(psmcdata$year)),round(max(psmcdata$year))),type="n",ylab="Ne(log 10)",xlab=paste("Generations ago(g=",opt$year,")",sep=""),xaxt="n")
+png(paste("pop-all","psmc.png",sep="."))## xlim=c(ceiling(min(psmcdata$year)),round(max(psmcdata$year)))#xlim=c(200,round(max(psmcdata$year)/0.1))
+plot(1,1,ylim=c(0,round(max(psmcdata$ne)/1)),xlim=c(ceiling(min(psmcdata$year)),roundyears),type="n",ylab="Ne(log 10)",xlab=expression(paste("Years ago(g=1",",",mu,"=3.7e-8)",sep="")),xaxt="n")
 for (i in 1:length(popid)){
 	lines(y=psmcdata$ne[psmcdata$popid==popid[i]],x=psmcdata$year[psmcdata$popid==popid[i]],type="l",col=col[i],lwd=2)
 }
-axis(1,at=seq(ceiling(min(psmcdata$year)),round(max(psmcdata$year)),1),label=paste("10","^",seq(ceiling(min(psmcdata$year)),round(max(psmcdata$year)),1)))
+axis(1,at=seq(ceiling(min(psmcdata$year)),roundyears,1),label=paste("10","^",seq(ceiling(min(psmcdata$year)),roundyears,1)))
 legend("topright",col=col,legend=pop.id,pch=1,cex=1)
 dev.off()
 
